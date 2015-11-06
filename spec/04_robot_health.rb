@@ -13,19 +13,19 @@ describe Robot do
 
   describe "#wound" do
     it "decreases health" do
-      @robot.wound(20)
+      @robot.wound(20, true)
       expect(@robot.health).to eq(80)
     end
 
     it "doesn't decrease health below 0" do
-      @robot.wound(150)
+      @robot.wound(151)
       expect(@robot.health).to eq(0)
     end
   end
 
   describe "#heal" do
     it "increases health" do
-      @robot.wound(40)
+      @robot.wound(40, true)
       @robot.heal(20)
       expect(@robot.health).to eq(80)
     end

@@ -28,6 +28,7 @@ describe Robot do
         end
 
         it "should dispense the weapon (can only use once)" do
+          allow(@robot2).to receive(:shields).and_return(0)
           @robot.attack(@robot2)
           expect(@robot.equipped_weapon).to be_nil
         end

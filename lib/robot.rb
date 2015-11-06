@@ -8,18 +8,24 @@ class Robot
   class InvalidTargetError < StandardError
   end
 
-  attr_reader :position, :items, :health, :range, :equipped_weapon
+  attr_reader :position, :items, :health, :range, :equipped_weapon, :shields
 
   WEIGHT_CAPACITY = 250
   MAX_HEALTH = 100
   DEFAULT_DAMAGE = 5
+  MAX_SHIELDS = 50
+  DEFAULT_RANGE = 1
+
+  @@robots = []
 
   def initialize
     @position = [0,0]
     @items = []
     @health = MAX_HEALTH
+    @shields = MAX_SHIELDS
     @equipped_weapon = nil
-    @range = 1
+    @range = DEFAULT_RANGE
+    @@robots << self
   end
 
 
@@ -42,9 +48,9 @@ class Robot
 
   # stuff with items
   def pick_up(item)
+    item.feed(self) if item.is_a?(BoxOfBolts) && should_eat?
     if can_pick_up?(item)
       self.equipped_weapon = item if item.is_a? Weapon
-      item.feed(self) if item.is_a?(BoxOfBolts) && should_eat?
       @items << item
     end
   end
@@ -58,9 +64,20 @@ class Robot
   end
 
   # health stuff
-  def wound(amount)
-    damage = health - amount
-    @health = damage >= 0 ? damage : 0
+  def wound(amount, piercing = false)
+    block(amount) unless piercing
+    @health = amount > health ? 0 : health - amount if piercing
+  end
+
+  def block(amount)
+    if amount > shields
+      amount -= shields
+      @shields = 0
+      # byebug
+      wound(amount, true)
+    else
+      @shields -= amount
+    end
   end
 
   def heal(amount)
@@ -69,16 +86,12 @@ class Robot
   end
 
   def attack(target)
-    if can_attack?(target) && has_weapon?
+    if can_attack?(target) && equipped_weapon
       equipped_weapon.hit(target)
       dispense_weapon(equipped_weapon) if equipped_weapon.is_a? Grenade
     elsif can_attack?(target)
       target.wound(DEFAULT_DAMAGE)
     end
-  end
-
-  def has_weapon?
-    equipped_weapon.is_a? Weapon
   end
 
   # enhancements 1
@@ -112,8 +125,32 @@ class Robot
   def dispense_weapon(weapon)
     @equipped_weapon = nil
     @items.delete(weapon)
+    @range = DEFAULT_RANGE
   end
 
-  private :can_attack?, :has_weapon?, :can_pick_up?, :dispense_weapon
+  def restore_shields
+    @shields = MAX_SHIELDS
+  end
+
+  def scan
+    @@robots.select do |robot|
+      x_distance = (robot.position[0] - position[0]).abs
+      y_distance = (robot.position[1] - position[1]).abs
+      robot != self && x_distance <= 1 && y_distance <= 1
+    end
+  end
+
+  class << self
+    def robots
+      @@robots
+    end
+
+    def in_position(x, y)
+      @@robots.select { |robot| robot.position == [x,y] }
+    end
+
+  end
+
+  private :can_attack?, :can_pick_up?, :dispense_weapon
 
 end
